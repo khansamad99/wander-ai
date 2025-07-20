@@ -1,0 +1,44 @@
+{
+  "hero": {
+    "mainTitle": "WanderWise AI: Your Personalized Travel Planner",
+    "tagline": "Unleash Your Journey: AI-Crafted Itineraries, Real-time Insights, Effortless Adventures.",
+    "headline": "Your Dream Trip, Designed by AI, Perfected by You.",
+    "subheadline": "Stop endless planning. Start exploring. WanderWise AI crafts custom itineraries, finds real-time deals, and guides your visa journey, all in one place."
+  },
+  "features": [
+    {
+      "id": 1,
+      "title": "Personalized Itineraries, Instantly",
+      "description": "Tell us your desires, and our AI will build a day-by-day adventure tailored just for you. From hidden gems to iconic landmarks, every detail is considered.",
+      "icon": "map"
+    },
+    {
+      "id": 2,
+      "title": "Real-time Insights, Always Current",
+      "description": "Get the latest prices for flights and hotels, real-time availability for attractions, and up-to-the-minute local information. No more outdated guides or surprise costs.",
+      "icon": "clock"
+    },
+    {
+      "id": 3,
+      "title": "Visa Made Simple",
+      "description": "Navigate complex visa requirements with ease. We provide clear overviews and direct links to official sources, helping you prepare for your international journey.",
+      "icon": "passport"
+    },
+    {
+      "id": 4,
+      "title": "Budget-Friendly Adventures",
+      "description": "Set your budget, and let WanderWise AI find the best options to match. Discover incredible experiences without breaking the bank.",
+      "icon": "money"
+    },
+    {
+      "id": 5,
+      "title": "Effortless Planning, More Exploring",
+      "description": "Spend less time researching and more time dreaming. Our intuitive platform makes planning your next escape a breeze.",
+      "icon": "sparkles"
+    }
+  ],
+  "cta": {
+    "text": "Start Your Adventure Now!",
+    "href": "#signup"
+  }
+}
