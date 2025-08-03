@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { getAirportSuggestions, resolveAirportCode, isValidAirportInput } from "@/lib/airport-codes";
+import AirportInput from "./AirportInput";
 
 interface ItineraryFormProps {
   onSubmit: (data: ExtendedFormData) => void;
@@ -132,6 +134,21 @@ export default function ItineraryForm({ onSubmit }: ItineraryFormProps) {
           alert("Please fill in both origin and destination");
           return false;
         }
+        
+        // Validate airport codes can be resolved
+        const originCode = resolveAirportCode(formData.origin);
+        const destCode = resolveAirportCode(formData.destination);
+        
+        if (originCode.length !== 3) {
+          alert(`Could not find airport for "${formData.origin}". Please enter a valid city name (e.g., Delhi, New York) or airport code (e.g., DEL, JFK)`);
+          return false;
+        }
+        
+        if (destCode.length !== 3) {
+          alert(`Could not find airport for "${formData.destination}". Please enter a valid city name (e.g., Paris, London) or airport code (e.g., CDG, LHR)`);
+          return false;
+        }
+        
         if (formData.days < 1 || formData.days > 30) {
           alert("Number of days must be between 1 and 30");
           return false;
@@ -223,37 +240,25 @@ export default function ItineraryForm({ onSubmit }: ItineraryFormProps) {
     <div className="space-y-6">
       <h2 className="text-2xl font-semibold mb-4">Where are you traveling?</h2>
       
-      <div>
-        <label htmlFor="origin" className="block text-sm font-medium text-gray-700 mb-2">
-          Origin Place *
-        </label>
-        <input
-          type="text"
-          id="origin"
-          name="origin"
-          value={formData.origin}
-          onChange={handleInputChange}
-          required
-          placeholder="e.g., New York, USA"
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-        />
-      </div>
+      <AirportInput
+        id="origin"
+        name="origin"
+        value={formData.origin}
+        onChange={handleInputChange}
+        required
+        label="Origin Place"
+        placeholder="e.g., Delhi, New York, ATL"
+      />
 
-      <div>
-        <label htmlFor="destination" className="block text-sm font-medium text-gray-700 mb-2">
-          Destination *
-        </label>
-        <input
-          type="text"
-          id="destination"
-          name="destination"
-          value={formData.destination}
-          onChange={handleInputChange}
-          required
-          placeholder="e.g., Paris, France"
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-        />
-      </div>
+      <AirportInput
+        id="destination"
+        name="destination"
+        value={formData.destination}
+        onChange={handleInputChange}
+        required
+        label="Destination"
+        placeholder="e.g., Paris, London, LAX"
+      />
 
       <div>
         <label htmlFor="days" className="block text-sm font-medium text-gray-700 mb-2">

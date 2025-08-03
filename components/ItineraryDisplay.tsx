@@ -1,270 +1,335 @@
 "use client";
 
+import { AIResponse } from "@/lib/api";
+import { parseMarkdown, parseAIRecommendation } from "@/lib/markdown";
+
+interface ExtendedFormData {
+  origin: string;
+  destination: string;
+  days: number;
+  dates?: string;
+  minBudget: number;
+  maxBudget: number;
+  travelStyle: string[];
+  pace: string;
+  interests: string[];
+  adults: number;
+  children: number;
+  infants: number;
+  accommodationType: string[];
+  transportPreferences: {
+    flightClass: string;
+    preferDirectFlights: boolean;
+    needRentalCar: boolean;
+  };
+  dietaryRestrictions: string[];
+  accessibility: string[];
+  tripPurpose: string;
+}
+
 interface ItineraryDisplayProps {
-  formData: any;
+  formData: ExtendedFormData | null;
+  apiResponse: AIResponse | null;
   onBack: () => void;
 }
 
-export default function ItineraryDisplay({ formData, onBack }: ItineraryDisplayProps) {
-  // Calculate estimated costs based on form data
-  const flightCostMultiplier = {
-    economy: 1,
-    premium: 1.5,
-    business: 3,
-    first: 5
-  };
-  
-  const baseFlight = 450;
-  const flightCost = baseFlight * (flightCostMultiplier[formData.transportPreferences?.flightClass || 'economy'] || 1);
-  const hotelCostPerNight = formData.accommodationType?.includes('hostel') ? 50 : 
-                           formData.accommodationType?.includes('boutique') ? 180 : 120;
-  const totalEstimatedCost = flightCost * 2 + (hotelCostPerNight * (formData.days - 1)) + (formData.days * 50);
-
-  // Hardcoded itinerary data
-  const itinerary = {
-    overview: {
-      origin: formData.origin,
-      destination: formData.destination,
-      duration: formData.days,
-      dates: formData.dates || "Flexible dates",
-      budget: `$${formData.minBudget} - $${formData.maxBudget}`,
-      totalEstimatedCost: `$${Math.round(totalEstimatedCost)}`,
-      travelers: {
-        adults: formData.adults || 1,
-        children: formData.children || 0,
-        infants: formData.infants || 0
-      },
-      pace: formData.pace || "moderate",
-      tripPurpose: formData.tripPurpose || "vacation"
-    },
-    transportation: {
-      outbound: {
-        type: "Flight",
-        details: `${formData.transportPreferences?.preferDirectFlights ? 'Direct' : 'Connecting'} flight from ${formData.origin} to ${formData.destination}`,
-        duration: "7h 30m",
-        cost: `$${Math.round(flightCost)}`,
-        airline: "Air France",
-        class: formData.transportPreferences?.flightClass || "economy"
-      },
-      return: {
-        type: "Flight",
-        details: `${formData.transportPreferences?.preferDirectFlights ? 'Direct' : 'Connecting'} flight from ${formData.destination} to ${formData.origin}`,
-        duration: "8h 15m",
-        cost: `$${Math.round(flightCost * 1.05)}`,
-        airline: "Air France",
-        class: formData.transportPreferences?.flightClass || "economy"
-      },
-      local: formData.transportPreferences?.needRentalCar ? 
-        `Rental Car (${formData.days} days): $${formData.days * 45}` : 
-        `Metro Pass (${formData.days} days): $${formData.days * 7}`
-    },
-    accommodation: {
-      name: "Hotel Le Marais",
-      location: "Central Paris, 3rd Arrondissement",
-      type: "3-star boutique hotel",
-      costPerNight: "$120",
-      totalCost: `$${120 * (formData.days - 1)}`,
-      amenities: ["Free WiFi", "Breakfast included", "24/7 reception", "Near metro station"]
-    },
-    dailyItinerary: [
-      {
-        day: 1,
-        title: "Arrival & Eiffel Tower",
-        activities: [
-          { time: "Morning", activity: "Arrive at CDG Airport, transfer to hotel", cost: "$35" },
-          { time: "Afternoon", activity: "Visit Eiffel Tower and Trocadéro Gardens", cost: "$28" },
-          { time: "Evening", activity: "Seine River cruise at sunset", cost: "$15" },
-          { time: "Dining", activity: "Dinner at Café de l'Homme (view of Eiffel Tower)", cost: "$60" }
-        ]
-      },
-      {
-        day: 2,
-        title: "Louvre & Historic Paris",
-        activities: [
-          { time: "Morning", activity: "Louvre Museum (pre-booked tickets)", cost: "$20" },
-          { time: "Afternoon", activity: "Walk through Tuileries Garden to Place de la Concorde", cost: "Free" },
-          { time: "Evening", activity: "Explore Le Marais district", cost: "Free" },
-          { time: "Dining", activity: "Traditional French bistro in Le Marais", cost: "$45" }
-        ]
-      },
-      {
-        day: 3,
-        title: "Versailles Day Trip",
-        activities: [
-          { time: "Morning", activity: "Train to Palace of Versailles", cost: "$8" },
-          { time: "Afternoon", activity: "Tour palace and gardens", cost: "$22" },
-          { time: "Evening", activity: "Return to Paris, walk Champs-Élysées", cost: "$8" },
-          { time: "Dining", activity: "Dinner near Arc de Triomphe", cost: "$50" }
-        ]
-      }
-    ],
-    foodRecommendations: [
-      "Croissants at Du Pain et des Idées",
-      "Steak frites at L'Entrecôte",
-      "Macarons at Ladurée",
-      "Wine and cheese at La Belle Hortense"
-    ]
-  };
-
-  // Generate days based on formData.days
-  const allDays = [...itinerary.dailyItinerary];
-  if (formData.days > 3) {
-    for (let i = 4; i <= formData.days; i++) {
-      allDays.push({
-        day: i,
-        title: `Day ${i} - Explore More of Paris`,
-        activities: [
-          { time: "Morning", activity: "Visit Montmartre and Sacré-Cœur", cost: "Free" },
-          { time: "Afternoon", activity: "Musée d'Orsay or Latin Quarter", cost: "$16" },
-          { time: "Evening", activity: "Enjoy local neighborhood", cost: "Free" },
-          { time: "Dining", activity: "Local restaurant recommendation", cost: "$40" }
-        ]
-      });
-    }
-  }
-
-  return (
-    <div className="max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">
-          Your Customized Itinerary
-        </h1>
+export default function ItineraryDisplay({ formData, apiResponse, onBack }: ItineraryDisplayProps) {
+  // If no data available, show error state
+  if (!formData) {
+    return (
+      <div className="text-center py-12">
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">No Data Available</h2>
+        <p className="text-gray-600 mb-6">Please go back and submit the form again.</p>
         <button
           onClick={onBack}
-          className="text-blue-600 hover:text-blue-700 font-medium flex items-center gap-2 transition-colors"
+          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          Back to Form
+          Go Back
+        </button>
+      </div>
+    );
+  }
+
+  // Extract real data from API response
+  const hasApiData = apiResponse && (apiResponse.flights.length > 0 || apiResponse.hotels.length > 0 || apiResponse.itinerary);
+  const bestFlight = apiResponse?.flights?.[0];
+  const bestHotel = apiResponse?.hotels?.[0];
+  
+  // Calculate costs
+  const flightCost = bestFlight ? parseFloat(bestFlight.price) || 450 : 450;
+  const hotelCostPerNight = bestHotel ? parseFloat(bestHotel.price) || 120 : 120;
+  const totalEstimatedCost = (flightCost * 2) + (hotelCostPerNight * (formData.days - 1)) + (formData.days * 50);
+  
+  // Calculate total travelers
+  const totalTravelers = (formData.adults || 1) + (formData.children || 0) + (formData.infants || 0);
+
+  return (
+    <div className="max-w-6xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Your {formData.destination} Itinerary
+          </h1>
+          <p className="text-gray-600">
+            {formData.days} days • {totalTravelers} traveler{totalTravelers > 1 ? 's' : ''}
+          </p>
+        </div>
+        <button
+          onClick={onBack}
+          className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+        >
+          ← Back to Form
         </button>
       </div>
 
-      {/* Overview Card */}
-      <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-        <h2 className="text-2xl font-semibold mb-4 text-gray-800">Trip Overview</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <p className="text-sm text-gray-600">From</p>
-            <p className="font-medium text-gray-900">{itinerary.overview.origin}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600">To</p>
-            <p className="font-medium text-gray-900">{itinerary.overview.destination}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600">Duration</p>
-            <p className="font-medium text-gray-900">{itinerary.overview.duration} days</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600">Travel Dates</p>
-            <p className="font-medium text-gray-900">{itinerary.overview.dates}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600">Budget Range</p>
-            <p className="font-medium text-gray-900">{itinerary.overview.budget}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600">Estimated Total Cost</p>
-            <p className="font-medium text-green-600">{itinerary.overview.totalEstimatedCost}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Transportation */}
-      <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-        <h2 className="text-2xl font-semibold mb-4 text-gray-800">Transportation</h2>
-        <div className="space-y-4">
-          <div className="border-l-4 border-blue-500 pl-4">
-            <h3 className="font-semibold text-gray-900">Outbound Journey</h3>
-            <p className="text-gray-700">{itinerary.transportation.outbound.details}</p>
-            <p className="text-sm text-gray-600">
-              {itinerary.transportation.outbound.airline} • {itinerary.transportation.outbound.duration} • 
-              <span className="font-medium text-blue-600"> {itinerary.transportation.outbound.cost}</span>
-            </p>
-          </div>
-          <div className="border-l-4 border-blue-500 pl-4">
-            <h3 className="font-semibold text-gray-900">Return Journey</h3>
-            <p className="text-gray-700">{itinerary.transportation.return.details}</p>
-            <p className="text-sm text-gray-600">
-              {itinerary.transportation.return.airline} • {itinerary.transportation.return.duration} • 
-              <span className="font-medium text-blue-600"> {itinerary.transportation.return.cost}</span>
-            </p>
-          </div>
-          <div className="bg-gray-50 p-3 rounded-lg">
-            <p className="text-sm font-medium text-gray-700">Local Transportation: {itinerary.transportation.local}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Accommodation */}
-      <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-        <h2 className="text-2xl font-semibold mb-4 text-gray-800">Accommodation</h2>
-        <h3 className="font-semibold text-lg text-gray-900 mb-2">{itinerary.accommodation.name}</h3>
-        <p className="text-gray-700 mb-2">{itinerary.accommodation.location}</p>
-        <p className="text-gray-600 mb-3">{itinerary.accommodation.type}</p>
-        <div className="flex flex-wrap gap-2 mb-3">
-          {itinerary.accommodation.amenities.map((amenity, index) => (
-            <span key={index} className="px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full">
-              {amenity}
+      {/* API Status */}
+      {hasApiData ? (
+        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+          <div className="flex items-center">
+            <span className="text-green-500 text-xl mr-3">✅</span>
+            <span className="text-green-800 font-medium">
+              Live data retrieved from travel APIs
             </span>
-          ))}
+          </div>
         </div>
-        <p className="text-lg">
-          <span className="text-gray-600">Cost: </span>
-          <span className="font-semibold text-gray-900">{itinerary.accommodation.costPerNight}/night</span>
-          <span className="text-gray-600"> • Total: </span>
-          <span className="font-semibold text-green-600">{itinerary.accommodation.totalCost}</span>
-        </p>
-      </div>
+      ) : (
+        <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="flex items-center">
+            <span className="text-yellow-500 text-xl mr-3">⚠️</span>
+            <span className="text-yellow-800 font-medium">
+              Showing sample data - API integration in progress
+            </span>
+          </div>
+        </div>
+      )}
 
-      {/* Daily Itinerary */}
-      <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-        <h2 className="text-2xl font-semibold mb-6 text-gray-800">Day-by-Day Itinerary</h2>
-        <div className="space-y-6">
-          {allDays.slice(0, formData.days).map((day) => (
-            <div key={day.day} className="border-b border-gray-200 last:border-0 pb-6 last:pb-0">
-              <h3 className="text-xl font-semibold text-blue-600 mb-3">
-                Day {day.day}: {day.title}
-              </h3>
-              <div className="space-y-2">
-                {day.activities.map((activity, index) => (
-                  <div key={index} className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <span className="font-medium text-gray-700">{activity.time}: </span>
-                      <span className="text-gray-600">{activity.activity}</span>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+        {/* Trip Overview */}
+        <div className="lg:col-span-1">
+          <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Trip Overview</h2>
+            <div className="space-y-3">
+              <div>
+                <span className="font-medium text-gray-700">Route:</span>
+                <p className="text-gray-600">{formData.origin} → {formData.destination}</p>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Duration:</span>
+                <p className="text-gray-600">{formData.days} days</p>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Budget Range:</span>
+                <p className="text-gray-600">${formData.minBudget} - ${formData.maxBudget}</p>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Estimated Total:</span>
+                <p className="text-gray-600 font-bold text-lg">${Math.round(totalEstimatedCost)}</p>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Travel Style:</span>
+                <p className="text-gray-600">{formData.travelStyle.join(', ') || 'Not specified'}</p>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Interests:</span>
+                <p className="text-gray-600">{formData.interests.join(', ') || 'Not specified'}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Travelers */}
+          <div className="bg-white rounded-2xl shadow-lg p-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-3">Travelers</h3>
+            <div className="space-y-2">
+              {formData.adults > 0 && (
+                <p className="text-gray-600">👥 {formData.adults} Adult{formData.adults > 1 ? 's' : ''}</p>
+              )}
+              {formData.children > 0 && (
+                <p className="text-gray-600">👶 {formData.children} Child{formData.children > 1 ? 'ren' : ''}</p>
+              )}
+              {formData.infants > 0 && (
+                <p className="text-gray-600">🍼 {formData.infants} Infant{formData.infants > 1 ? 's' : ''}</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="lg:col-span-2 space-y-10">
+          {/* Flights Section */}
+          {apiResponse?.flights && apiResponse.flights.length > 0 ? (
+            <div className="bg-white rounded-2xl shadow-lg p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">✈️ Flight Options</h2>
+              <div className="space-y-4">
+                {apiResponse.flights.slice(0, 3).map((flight, index) => (
+                  <div key={index} className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-semibold text-gray-900">{flight.airline}</h3>
+                      <span className="text-lg font-bold text-blue-600">${flight.price}</span>
                     </div>
-                    <span className="text-blue-600 font-medium ml-4">{activity.cost}</span>
+                    <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
+                      <div>
+                        <span className="font-medium">Duration:</span> {flight.duration}
+                      </div>
+                      <div>
+                        <span className="font-medium">Stops:</span> {flight.stops}
+                      </div>
+                      <div>
+                        <span className="font-medium">Class:</span> {flight.travel_class}
+                      </div>
+                    </div>
+                    <div className="mt-2 text-sm text-gray-600">
+                      <p><strong>Departure:</strong> {flight.departure}</p>
+                      <p><strong>Arrival:</strong> {flight.arrival}</p>
+                    </div>
                   </div>
                 ))}
               </div>
+              
+              {/* AI Flight Recommendation */}
+              {apiResponse.ai_flight_recommendation && (
+                <div className="mt-8 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+                  <div className="flex items-center mb-4">
+                    <span className="text-2xl mr-3">🤖</span>
+                    <h3 className="text-xl font-semibold text-blue-900">AI Flight Recommendation</h3>
+                  </div>
+                  <div 
+                    className="text-blue-800 space-y-4"
+                    dangerouslySetInnerHTML={{ 
+                      __html: parseAIRecommendation(apiResponse.ai_flight_recommendation) 
+                    }} 
+                  />
+                </div>
+              )}
             </div>
-          ))}
+          ) : (
+            <div className="bg-white rounded-2xl shadow-lg p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">✈️ Transportation</h2>
+              <div className="space-y-4">
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <h3 className="font-semibold mb-2">Outbound Flight</h3>
+                  <p className="text-gray-600">
+                    {formData.transportPreferences?.preferDirectFlights ? 'Direct' : 'Connecting'} flight from {formData.origin} to {formData.destination}
+                  </p>
+                  <p className="text-sm text-gray-500">Class: {formData.transportPreferences?.flightClass || 'Economy'}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Hotels Section */}
+          {apiResponse?.hotels && apiResponse.hotels.length > 0 ? (
+            <div className="bg-white rounded-2xl shadow-lg p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">🏨 Hotel Options</h2>
+              <div className="space-y-4">
+                {apiResponse.hotels.slice(0, 3).map((hotel, index) => (
+                  <div key={index} className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-semibold text-gray-900">{hotel.name}</h3>
+                      <span className="text-lg font-bold text-green-600">${hotel.price}/night</span>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
+                      <div className="flex items-center">
+                        <span className="text-yellow-500">★</span>
+                        <span className="ml-1">{hotel.rating}</span>
+                      </div>
+                      <div>{hotel.location}</div>
+                    </div>
+                    {hotel.link !== 'N/A' && (
+                      <a 
+                        href={hotel.link} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 text-sm"
+                      >
+                        View Details →
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+              
+              {/* AI Hotel Recommendation */}
+              {apiResponse.ai_hotel_recommendation && (
+                <div className="mt-8 p-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200">
+                  <div className="flex items-center mb-4">
+                    <span className="text-2xl mr-3">🤖</span>
+                    <h3 className="text-xl font-semibold text-green-900">AI Hotel Recommendation</h3>
+                  </div>
+                  <div 
+                    className="text-green-800 space-y-4"
+                    dangerouslySetInnerHTML={{ 
+                      __html: parseAIRecommendation(apiResponse.ai_hotel_recommendation) 
+                    }} 
+                  />
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl shadow-lg p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">🏨 Accommodation</h2>
+              <div className="border border-gray-200 rounded-lg p-4">
+                <h3 className="font-semibold mb-2">Recommended Accommodation Type</h3>
+                <p className="text-gray-600">{formData.accommodationType.join(', ')}</p>
+                <p className="text-sm text-gray-500 mt-2">
+                  Estimated cost: ${hotelCostPerNight}/night × {formData.days - 1} nights = ${hotelCostPerNight * (formData.days - 1)}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Itinerary Section */}
+          {apiResponse?.itinerary ? (
+            <div className="bg-white rounded-2xl shadow-lg p-8">
+              <div className="flex items-center mb-6">
+                <span className="text-3xl mr-3">📅</span>
+                <h2 className="text-2xl font-bold text-gray-900">AI-Generated Itinerary</h2>
+              </div>
+              <div className="prose prose-lg max-w-none">
+                <div 
+                  className="text-gray-700 leading-relaxed"
+                  dangerouslySetInnerHTML={{ 
+                    __html: parseMarkdown(apiResponse.itinerary) 
+                  }} 
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl shadow-lg p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">📅 Sample Itinerary</h2>
+              <div className="space-y-4">
+                {Array.from({ length: Math.min(formData.days, 3) }, (_, index) => (
+                  <div key={index} className="border-l-4 border-blue-500 pl-4">
+                    <h3 className="font-semibold text-gray-900">Day {index + 1}</h3>
+                    <p className="text-gray-600">
+                      Explore {formData.destination} based on your interests: {formData.interests.slice(0, 2).join(', ')}
+                    </p>
+                  </div>
+                ))}
+                {formData.days > 3 && (
+                  <div className="text-center py-4 text-gray-500">
+                    ... and {formData.days - 3} more days of adventure!
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Food Recommendations */}
-      <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-        <h2 className="text-2xl font-semibold mb-4 text-gray-800">Must-Try Food & Dining</h2>
-        <ul className="space-y-2">
-          {itinerary.foodRecommendations.map((food, index) => (
-            <li key={index} className="flex items-start">
-              <span className="text-blue-500 mr-2">•</span>
-              <span className="text-gray-700">{food}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-
       {/* Action Buttons */}
-      <div className="flex gap-4 justify-center">
-        <button className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold py-3 px-8 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg">
-          Save Itinerary
+      <div className="mt-8 flex justify-center gap-4">
+        <button
+          onClick={onBack}
+          className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+        >
+          ← Modify Trip
         </button>
-        <button className="bg-white border-2 border-blue-600 text-blue-600 hover:bg-blue-50 font-semibold py-3 px-8 rounded-lg transition-all duration-300">
-          Export as PDF
-        </button>
+        {hasApiData && (
+          <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors">
+            Save Itinerary
+          </button>
+        )}
       </div>
     </div>
   );
